@@ -40,10 +40,10 @@ This project implements a **6-bit comparator** in **Verilog** for both **signed*
 - `comparator_tb` → testbench
 
 ## Verification
-The project verifies the structural design by comparing it against a behavioral model for all possible combinations of inputs. :contentReference[oaicite:0]{index=0}
+The project verifies the structural design by comparing it against a behavioral model for all possible combinations of inputs. 
 
 ## Course
-ENCS3310 – Advanced Digital Design. The project specification requires a structural comparator for 6-bit signed and unsigned numbers, with synchronous registers and full verification. :contentReference[oaicite:1]{index=1}
+ENCS3310 – Advanced Digital Design. The project specification requires a structural comparator for 6-bit signed and unsigned numbers, with synchronous registers and full verification. 
 
 ## Author
 Khaled
