@@ -1,0 +1,287 @@
+module comparator (A,B,S,clk,DEqual,DGreater,DSmaller); 
+    input [5:0] A;    
+    input [5:0] B;     
+    input S,clk; 
+	output DEqual,DGreater,DSmaller;//D = D FlipFlop
+    wire Equal,Greater,Smaller;
+	wire Eq_Un,Gr_Un,Sm_Un; // Un = Unsign number
+	wire Eq_S,Gr_S,Sm_S; // S = sign number
+	wire [5:0] DA,DB;
+	wire DS;
+	DFF_input Input(DA,DB,DS,A,B,S,clk);
+	
+	UnsignComparator U1(DA,DB,Eq_Un,Gr_Un,Sm_Un);
+	SignComparator U2(DA,DB,Eq_S,Gr_S,Sm_S);
+	assign Equal = DS ? Eq_S : Eq_Un;
+	assign Greater = DS ? Gr_S : Gr_Un;
+	assign Smaller = DS ? Sm_S : Sm_Un;
+	
+	DFF_output Output(DGreater,DSmaller,DEqual,Greater,Smaller,Equal,clk);
+	
+endmodule
+
+module UnsignComparator(A,B,Eq,Gr,Sm);//Eq=Equal || Gr=Greater || Sm=Smaller
+    input [5:0] A;
+    input [5:0] B;    
+    output Eq,Gr,Sm;
+	wire G[5:0];
+	wire E[5:0];
+	wire g1,g2,g3,g4,g5,g6;
+	wire [5:0] Ainvers,Binvers,w1,w2;
+	genvar i;
+	
+	generate
+		for(i=0 ; i<6 ; i=i+1)begin
+			//To check Greater
+			not #(1ns)(Binvers[i],B[i]);
+			not #(1ns)(Ainvers[i],A[i]);
+			and #(6ns)(G[i],A[i],Binvers[i]);
+			//To check equal
+			and #(6ns)(w1[i],A[i],B[i]);
+			and #(6ns)(w2[i],Ainvers[i],Binvers[i]);
+			or #(6ns)(E[i],w1[i],w2[i]);
+		end
+	endgenerate
+	
+	assign g1 = G[5];
+	and #(6ns) (g2,E[5],G[4]);
+	and #(6ns) (g3,E[5],E[4],G[3]);
+	and #(6ns) (g4,E[5],E[4],E[3],G[2]);
+	and #(6ns) (g5,E[5],E[4],E[3],E[2],G[1]);
+	and #(6ns)(g6,E[5],E[4],E[3],E[2],E[1],G[0]);
+	or #(6ns) (Gr,g1,g2,g3,g4,g5,g6);
+	
+	and #(6ns) (Eq,E[5],E[4],E[3],E[2],E[1],E[0]);
+	
+	nor #(5ns)(Sm , Eq,Gr);
+	
+endmodule
+
+module SignComparator(A,B,Eq,Gr,Sm);//Eq=Equal || Gr=Greater || Sm=Smaller
+    input [5:0] A;
+    input [5:0] B;    
+    output Eq,Gr,Sm;
+	wire [5:0] G,E,G1,E1;
+	wire Eq_case1,Gr_case1,Sm_case1;
+	wire Eq_case2,Gr_case2,Sm_case2;
+	wire Eq_case3,Gr_case3,Sm_case3;
+	wire Eq_case4,Gr_case4,Sm_case4;
+	wire g1,g2,g3,g4,g5,g6,gn1,gn2,gn3,gn4,gn5,gn6;//gn = g negative
+	wire [5:0] w1,w2,w1_n,w2_n,Ainvers,Binvers,Ainvers2,Binvers2;
+	genvar i;
+	
+	//case 1: if A positive and B is negative
+		assign Eq_case1 = 0;
+		assign Gr_case1 = 1;
+		assign Sm_case1 = 0;
+	//case 2: if A Negative and B is Positve
+		assign Eq_case2 = 0;
+		assign Gr_case2 = 0;
+		assign Sm_case2 = 1;
+	//case 3: if A and B are Positve
+		generate
+			for(i=0 ; i<6 ; i=i+1)begin
+				//To check Greater
+				not #(1ns)(Binvers[i],B[i]);
+				not #(1ns)(Ainvers[i],A[i]);
+				and #(6ns)(G[i],A[i],Binvers[i]);
+				//To check equal
+				and #(6ns)(w1[i],A[i],B[i]);
+				and #(6ns)(w2[i],Ainvers[i],Binvers[i]);
+				or #(6ns)(E[i],w1[i],w2[i]);
+			end
+		endgenerate	
+		
+		assign g1 = G[5];
+		and #(6ns) (g2,E[5],G[4]);
+		and #(6ns) (g3,E[5],E[4],G[3]);
+		and #(6ns) (g4,E[5],E[4],E[3],G[2]);
+		and #(6ns) (g5,E[5],E[4],E[3],E[2],G[1]);
+		and #(6ns)(g6,E[5],E[4],E[3],E[2],E[1],G[0]);
+		or #(6ns) (Gr_case3,g1,g2,g3,g4,g5,g6);
+		
+		and #(6ns) (Eq_case3,E[5],E[4],E[3],E[2],E[1],E[0]);
+		
+		nor #(5ns)(Sm_case3 , Eq_case3,Gr_case3);
+	//case 4: if A and B are neative
+		generate
+			for(i=0 ; i<6 ; i=i+1)begin
+				//To check Greater
+				not #(1ns)(Binvers2[i],B[i]);
+				not #(1ns)(Ainvers2[i],A[i]);
+				and #(6ns)(G1[i],A[i],Binvers2[i]);
+				//To check equal
+				and #(6ns)(w1_n[i],A[i],B[i]);
+				and #(6ns)(w2_n[i],Ainvers2[i],Binvers2[i]);
+				or #(6ns)(E1[i],w1_n[i],w2_n[i]);
+			end
+		endgenerate
+		
+		assign gn1 = G[5];
+		and #(6ns) (gn2,E1[5],G1[4]);
+		and #(6ns) (gn3,E1[5],E1[4],G1[3]);
+		and #(6ns) (gn4,E1[5],E1[4],E1[3],G1[2]);
+		and #(6ns) (gn5,E1[5],E1[4],E1[3],E1[2],G1[1]);
+		and #(6ns) (gn6,E1[5],E1[4],E1[3],E1[2],E1[1],G1[0]);
+		or #(6ns) (Gr_case4,gn1,gn2,gn3,gn4,gn5,gn6);//if the A is greater in value this mean that it is the smaller because minus
+		
+		and #(6ns) (Eq_case4,E1[5],E1[4],E1[3],E1[2],E1[1],E1[0]);
+		
+		nor #(5ns)( Sm_case4, Eq_case4,Gr_case4);
+		////////////////////////////////////////////////////////////////////////////////
+		assign Eq = (A[5]==0 && B[5]==1) ? Eq_case1:
+					(A[5]==1 && B[5]==0) ? Eq_case2:
+					(A[5]==0 && B[5]==0) ? Eq_case3: Eq_case4;
+		assign Gr = (A[5]==0 && B[5]==1) ? Gr_case1:
+					(A[5]==1 && B[5]==0) ? Gr_case2:
+					(A[5]==0 && B[5]==0) ? Gr_case3: Gr_case4;
+		assign Sm = (A[5]==0 && B[5]==1) ? Sm_case1:
+					(A[5]==1 && B[5]==0) ? Sm_case2:
+					(A[5]==0 && B[5]==0) ? Sm_case3: Sm_case4;
+		
+endmodule
+
+module Comparator_Behavioural(A,B,S,clk,D_Equal,D_Greater,D_Smaller);
+	input [5:0] A;
+    input [5:0] B;
+	input S,clk;
+    reg Eq,Gr,Sm;
+	wire [5:0] D_A,D_B,D_S;
+	reg [5:0] D_A2,D_B2;
+	output reg D_Greater,D_Smaller,D_Equal;
+	DFF_input Input(D_A,D_B,D_S,A,B,S,clk);
+	always @(D_A,D_B,D_S)begin
+		if (S) begin
+			if (D_A[5]== 1 && D_B[5]==1)begin
+				D_A2 = (~D_A) + 1;
+				D_B2 = (~D_B) +1;
+				if(D_A2 > D_B2)begin
+					Gr = 0;
+					Eq = 0;
+					Sm=1;
+				end
+				else if( D_A2 == D_B2)begin
+					Gr = 0;
+					Eq = 1;
+					Sm=0;
+				end
+				else begin
+					Gr = 1;
+					Eq = 0;
+					Sm=0;
+				end	
+			end
+			else if(D_A[5]== 1 && D_B[5]==0)begin
+			   	 	Gr = 0;
+					Eq = 0;
+					Sm=1;
+			end
+			else if(D_A[5]== 0 && D_B[5]==1)begin
+			   	 	Gr = 1;
+					Eq = 0;
+					Sm=0;
+			end	
+			else begin 
+				if(D_A > D_B)begin
+						Gr = 1;
+						Eq = 0;
+						Sm=0;
+					end
+					else if( D_A == D_B)begin
+						Gr = 0;
+						Eq = 1;
+						Sm=0;
+					end
+					else begin
+						Gr = 0;
+						Eq = 0;
+						Sm=1;
+					end
+				end
+	
+		end
+		else begin
+			if(D_A > D_B)begin
+					Gr = 1;
+					Eq = 0;
+					Sm=0;
+				end
+			else if( D_A == D_B)begin
+				Gr = 0;
+				Eq = 1;
+				Sm=0;
+			end
+			else begin
+				Gr = 0;
+				Eq = 0;
+				Sm=1;
+			end
+		end
+	end
+	
+	DFF_output Output(D_Greater,D_Smaller,D_Equal,Gr,Sm,Eq,clk);
+		
+endmodule
+
+module DFF_input (DA,DB, DS, A, B, S, clk);//work as register(memory)
+    input [5:0] A,B;    
+    input S, clk;
+    output reg [5:0] DA,DB;
+    output reg DS;
+
+    always @(posedge clk) begin
+        DA = A;    
+        DB = B; 
+        DS = S;
+    end
+endmodule
+
+module DFF_output (DGr, DSm, DEq, Gr, Sm, Eq, clk);//work as register(memory)
+    output reg DGr,DSm,DEq;
+    input Gr,Sm,Eq;
+    input clk;
+
+    always @(posedge clk) begin
+        DGr = Gr;
+        DSm = Sm;
+        DEq = Eq;
+    end
+endmodule
+
+
+module comparator_tb;
+    reg [5:0] A, B,i;   
+    reg S,clk;        
+    wire Equal_Str, Greater_Str, Smaller_Str ,Equal_Beh,Greater_Beh,Smaller_Beh;//str = Structural || Beh = Behavioural
+
+    comparator Structuraly(A,B,S,clk,Equal_Str,Greater_Str,Smaller_Str);
+	Comparator_Behavioural Behaviouraly(A,B,S,clk,Equal_Beh,Greater_Beh,Smaller_Beh);  
+
+    initial begin
+        clk = 0;
+    end
+	always #15ns clk = ~clk;
+    initial begin
+        A = 6'b000000; 
+        B = 6'b000000; 
+        S = 0; 
+		i=1;
+  
+		repeat(8192) begin
+			#30ns; 
+			if (Equal_Str != Equal_Beh || Greater_Str != Greater_Beh || Smaller_Str != Smaller_Beh) begin
+				i = 0;
+			end 
+			{A,B,S} = {A,B,S} +1;
+		end	
+		if (i == 1)
+			$display("PASS : comparator Structuraly is equal Comparator Behaviouraly");	
+		else
+			$display("FAIL : comparator Structuraly is not equal Comparator Behaviouraly");
+			
+		$stop;
+      
+    end	
+	
+endmodule
+			
